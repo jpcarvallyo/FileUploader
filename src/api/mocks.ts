@@ -1,5 +1,8 @@
 // Mock API functions for file upload operations
 
+// Track retry attempts for each file
+const retryAttempts = new Map<string, number>();
+
 export interface UploadUrlResponse {
   id: string;
   uploadUrl: string;
@@ -35,11 +38,21 @@ export const getUploadUrl = async (
     setTimeout(resolve, 300 + Math.random() * 500)
   );
 
-  // Simulate occasional failures (disabled for testing)
-  if (Math.random() < 0.0001) {
+  // Track retry attempts for this file
+  const currentAttempts = retryAttempts.get(filename) || 0;
+  retryAttempts.set(filename, currentAttempts + 1);
+
+  console.log(`getUploadUrl attempt ${currentAttempts + 1} for ${filename}`);
+
+  // Fail on first attempt, succeed on retry attempts
+  if (currentAttempts === 0) {
+    console.log(`getUploadUrl failing on first attempt for ${filename}`);
     throw new Error("Failed to get upload URL");
   }
 
+  console.log(
+    `getUploadUrl succeeding on attempt ${currentAttempts + 1} for ${filename}`
+  );
   return {
     id: `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     uploadUrl: `https://api.example.com/upload/${Date.now()}`,
@@ -57,10 +70,19 @@ export const uploadFile = async (
   const total = file.size;
   let loaded = 0;
 
-  // Simulate random failures during upload (disabled for testing)
-  if (Math.random() < 0.0001) {
+  // Track retry attempts for this file
+  const currentAttempts = retryAttempts.get(file.name) || 0;
+  console.log(`uploadFile attempt ${currentAttempts + 1} for ${file.name}`);
+
+  // Fail on first attempt, succeed on retry attempts
+  if (currentAttempts === 0) {
+    console.log(`uploadFile failing on first attempt for ${file.name}`);
     throw new Error("Upload failed - network error");
   }
+
+  console.log(
+    `uploadFile succeeding on attempt ${currentAttempts + 1} for ${file.name}`
+  );
 
   // Simulate progress updates
   const progressInterval = setInterval(() => {
@@ -110,8 +132,8 @@ export const notifyCompletion = async (
     setTimeout(resolve, 200 + Math.random() * 300)
   );
 
-  // Simulate occasional failures (disabled for testing)
-  if (Math.random() < 0.0001) {
+  // Simulate occasional failures (enabled for testing retry)
+  if (Math.random() < 0.3) {
     throw new Error("Failed to notify completion");
   }
 

@@ -11,13 +11,39 @@ const Uploader: React.FC = () => {
     startAll,
     retryAll,
     cancelAll,
-    retryUpload,
     retryStep,
     cancelUpload,
     removeUpload,
     clearAll,
     uploadActors,
   } = useUploader();
+
+  // Subscribe to the first actor's state (like individual items do)
+  const actorsArray = Array.from(uploadActors.values());
+  const firstActor = actorsArray[0];
+  const firstActorState = useSelector(
+    firstActor,
+    (state) => state?.value || null
+  );
+
+  // Check all actors for failure state
+  const hasFailedUploads = React.useMemo(() => {
+    let hasFailed = false;
+    uploadActors.forEach((actor) => {
+      const state = actor.getSnapshot();
+      if (state.matches("failure")) {
+        hasFailed = true;
+      }
+    });
+    return hasFailed;
+  }, [uploadActors, firstActorState]); // Recalculate when first actor state changes
+
+  console.log(
+    "First actor state:",
+    firstActorState,
+    "hasFailedUploads:",
+    hasFailedUploads
+  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -111,6 +137,15 @@ const Uploader: React.FC = () => {
       {/* Toolbar */}
       {uploadActors && uploadActors.size > 0 && (
         <div className="uploader-toolbar">
+          {(() => {
+            console.log("Toolbar Debug:", {
+              hasActiveUploads,
+              hasFailedUploads,
+              summary,
+              uploadCount: uploadActors.size,
+            });
+            return null;
+          })()}
           <div className="toolbar-left">
             <button
               onClick={startAll}
@@ -121,10 +156,10 @@ const Uploader: React.FC = () => {
             </button>
             <button
               onClick={retryAll}
-              disabled={!hasActiveUploads}
+              disabled={!hasFailedUploads}
               className="btn btn-secondary"
             >
-              Retry Failed
+              Retry All ({hasFailedUploads ? "Enabled" : "Disabled"})
             </button>
             <button
               onClick={cancelAll}
@@ -270,36 +305,20 @@ const Uploader: React.FC = () => {
                   {/* Action Buttons */}
                   <div style={{ display: "flex", gap: "8px" }}>
                     {actorState.value === "failure" && (
-                      <>
-                        <button
-                          onClick={() => retryStep(id)}
-                          style={{
-                            padding: "6px 12px",
-                            fontSize: "12px",
-                            background: "#6c757d",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Retry Step
-                        </button>
-                        <button
-                          onClick={() => retryUpload(id)}
-                          style={{
-                            padding: "6px 12px",
-                            fontSize: "12px",
-                            background: "#007bff",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Retry All
-                        </button>
-                      </>
+                      <button
+                        onClick={() => retryStep(id)}
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: "12px",
+                          background: "#6c757d",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Retry Step
+                      </button>
                     )}
 
                     {(actorState.value === "uploading" ||
