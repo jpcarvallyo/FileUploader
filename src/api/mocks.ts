@@ -44,10 +44,10 @@ export const getUploadUrl = async (
 
   console.log(`getUploadUrl attempt ${currentAttempts + 1} for ${filename}`);
 
-  // Fail on first attempt, succeed on retry attempts
+  // Fail on first attempt, succeed on all retry attempts
   if (currentAttempts === 0) {
     console.log(`getUploadUrl failing on first attempt for ${filename}`);
-    throw new Error("Failed to get upload URL");
+    throw new Error("Failed to get upload URL - network error");
   }
 
   console.log(
@@ -55,7 +55,7 @@ export const getUploadUrl = async (
   );
   return {
     id: `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    uploadUrl: `https://api.example.com/upload/${Date.now()}`,
+    uploadUrl: `https://api.example.com/upload/${Date.now()}?size=${size}`,
     expiresAt: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
   };
 };
@@ -74,7 +74,7 @@ export const uploadFile = async (
   const currentAttempts = retryAttempts.get(file.name) || 0;
   console.log(`uploadFile attempt ${currentAttempts + 1} for ${file.name}`);
 
-  // Fail on first attempt, succeed on retry attempts
+  // Fail on first attempt, succeed on all retry attempts
   if (currentAttempts === 0) {
     console.log(`uploadFile failing on first attempt for ${file.name}`);
     throw new Error("Upload failed - network error");
@@ -132,10 +132,23 @@ export const notifyCompletion = async (
     setTimeout(resolve, 200 + Math.random() * 300)
   );
 
-  // Simulate occasional failures (enabled for testing retry)
-  if (Math.random() < 0.3) {
-    throw new Error("Failed to notify completion");
+  // Track retry attempts for this file
+  const currentAttempts = retryAttempts.get(filename) || 0;
+  console.log(
+    `notifyCompletion attempt ${currentAttempts + 1} for ${filename}`
+  );
+
+  // Fail on first attempt, succeed on all retry attempts
+  if (currentAttempts === 0) {
+    console.log(`notifyCompletion failing on first attempt for ${filename}`);
+    throw new Error("Failed to notify completion - network error");
   }
+
+  console.log(
+    `notifyCompletion succeeding on attempt ${
+      currentAttempts + 1
+    } for ${filename}`
+  );
 
   return {
     success: true,

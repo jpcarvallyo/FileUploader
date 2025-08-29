@@ -16,6 +16,7 @@ const Uploader: React.FC = () => {
     removeUpload,
     clearAll,
     uploadActors,
+    fileInfoMap,
   } = useUploader();
 
   // Subscribe to the first actor's state (like individual items do)
@@ -197,11 +198,21 @@ const Uploader: React.FC = () => {
               const progress = actorState.context.progress?.percentage ?? 0;
               const { file } = actorState.context;
 
+              // Get file info from the fileInfoMap
+              const fileInfo = fileInfoMap.get(id);
+              const fileName = fileInfo?.name || file?.name || "Unknown file";
+              const fileSize = fileInfo?.size || file?.size || 0;
+
               console.log("ProgressUploadItem render:", {
                 id,
                 progress,
                 state: actorState.value,
                 progressData: actorState.context.progress,
+                file: file,
+                fileName: fileName,
+                contextKeys: Object.keys(actorState.context),
+                fullContext: actorState.context,
+                actorSnapshot: actor.getSnapshot(),
               });
 
               return (
@@ -225,10 +236,12 @@ const Uploader: React.FC = () => {
                   >
                     <div>
                       <div style={{ fontWeight: "bold", fontSize: "14px" }}>
-                        {file?.name || "Unknown file"}
+                        {fileName}
                       </div>
                       <div style={{ fontSize: "12px", color: "#666" }}>
-                        {file ? `${(file.size / 1024).toFixed(1)} KB` : ""}
+                        {fileSize > 0
+                          ? `${(fileSize / 1024).toFixed(1)} KB`
+                          : ""}
                       </div>
                     </div>
                     <div
@@ -277,15 +290,22 @@ const Uploader: React.FC = () => {
                         background: "#e9ecef",
                         borderRadius: "4px",
                         overflow: "hidden",
+                        marginBottom: "4px",
+                        position: "relative",
                       }}
                     >
                       <div
                         style={{
+                          position: "absolute",
+                          left: 0,
+                          top: 0,
                           width: `${progress}%`,
                           height: "100%",
                           background: "#007bff",
                           transition: "width 0.3s ease",
                           borderRadius: "4px",
+                          minWidth: "0%",
+                          maxWidth: "100%",
                         }}
                       />
                     </div>
@@ -293,12 +313,17 @@ const Uploader: React.FC = () => {
                       style={{
                         fontSize: "12px",
                         color: "#666",
-                        marginTop: "4px",
-                        textAlign: "center",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        width: "100%",
                       }}
                     >
-                      {progress}% ({actorState.context.progress?.loaded || 0} /{" "}
-                      {actorState.context.progress?.total || 0} bytes)
+                      <span style={{ minWidth: "40px" }}>{progress}%</span>
+                      <span style={{ minWidth: "120px", textAlign: "right" }}>
+                        {actorState.context.progress?.loaded || 0} /{" "}
+                        {actorState.context.progress?.total || 0} bytes
+                      </span>
                     </div>
                   </div>
 

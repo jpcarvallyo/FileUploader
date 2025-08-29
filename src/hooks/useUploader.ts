@@ -32,6 +32,7 @@ export const useUploader = () => {
 
   // Store cancellation functions for each upload
   const cancellationFunctions = useRef(new Map<string, () => void>());
+  const fileInfoMap = useRef(new Map<string, { name: string; size: number }>());
 
   // Add files and create actors for each
   const addFiles = useCallback(
@@ -43,17 +44,12 @@ export const useUploader = () => {
           .toString(36)
           .substr(2, 9)}`;
 
+        // Store file information
+        fileInfoMap.current.set(id, { name: file.name, size: file.size });
+
         // Create actor with file in context
         const actor = createActor(uploadMachine, {
           input: { file },
-          context: {
-            file,
-            uploadId: id, // Use the full upload ID from the start
-            uploadUrl: null,
-            progress: null,
-            result: null,
-            error: null,
-          },
         });
 
         // Add actor to store
@@ -64,9 +60,25 @@ export const useUploader = () => {
         actor.start();
         console.log(`Actor started for ID: ${id}`);
 
-        // Send START event
-        actor.send({ type: "START" });
-        console.log(`START event sent for ID: ${id}`);
+        // Set the initial context
+        actor.send({
+          type: "SET_INITIAL_CONTEXT",
+          context: {
+            file,
+            uploadId: id,
+            uploadUrl: null,
+            progress: null,
+            result: null,
+            error: null,
+          },
+        });
+
+        // Small delay to ensure context is set before sending START
+        setTimeout(() => {
+          // Send START event
+          actor.send({ type: "START" });
+          console.log(`START event sent for ID: ${id}`);
+        }, 10);
 
         // Check initial state
         const initialState = actor.getSnapshot();
@@ -413,6 +425,7 @@ export const useUploader = () => {
     summary,
     hasActiveUploads,
     hasFailedUploads,
+    fileInfoMap: fileInfoMap.current,
 
     // Actions
     addFiles,

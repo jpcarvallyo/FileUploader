@@ -43,6 +43,9 @@ export const uploadMachine = createMachine({
         cancelFunction: (_, event) => (event as any)?.cancelFunction,
       }),
     },
+    SET_INITIAL_CONTEXT: {
+      actions: assign((_, event) => (event as any)?.context || {}),
+    },
     PROGRESS: {
       actions: assign(({ event }) => {
         console.log("Global PROGRESS event received:", event);
@@ -57,11 +60,6 @@ export const uploadMachine = createMachine({
       on: {
         START: {
           target: "gettingUrl",
-          actions: assign({
-            error: null,
-            progress: null,
-            result: null,
-          }),
         },
       },
     },
