@@ -1,6 +1,39 @@
 import { createMachine, assign } from "xstate";
 import type { UploadProgress } from "../api/mocks";
 
+// Upload state constants for type safety
+export const UploadState = {
+  IDLE: "idle",
+  GETTING_URL: "gettingUrl",
+  UPLOADING: "uploading",
+  NOTIFYING: "notifying",
+  SUCCESS: "success",
+  FAILURE: "failure",
+  CANCELLED: "cancelled",
+} as const;
+
+export type UploadStateType = (typeof UploadState)[keyof typeof UploadState];
+
+// Upload event constants for type safety
+export const UploadEventType = {
+  START: "START",
+  GETTING_URL: "GETTING_URL",
+  URL_RECEIVED: "URL_RECEIVED",
+  UPLOADING: "UPLOADING",
+  NOTIFYING: "NOTIFYING",
+  SUCCESS: "SUCCESS",
+  ERROR: "ERROR",
+  PROGRESS: "PROGRESS",
+  RETRY_STEP: "RETRY_STEP",
+  RETRY_ALL: "RETRY_ALL",
+  CANCEL: "CANCEL",
+  SET_CANCEL_FUNCTION: "SET_CANCEL_FUNCTION",
+  SET_INITIAL_CONTEXT: "SET_INITIAL_CONTEXT",
+} as const;
+
+export type UploadEventTypeType =
+  (typeof UploadEventType)[keyof typeof UploadEventType];
+
 export interface UploadContext {
   file: File | null;
   uploadId: string | null;
@@ -12,22 +45,33 @@ export interface UploadContext {
 }
 
 export type UploadEvent =
-  | { type: "START" }
-  | { type: "GETTING_URL" }
-  | { type: "URL_RECEIVED"; uploadId: string; uploadUrl: string }
-  | { type: "UPLOADING" }
-  | { type: "NOTIFYING" }
-  | { type: "SUCCESS"; result: unknown }
-  | { type: "ERROR"; error: string }
-  | { type: "PROGRESS"; value: UploadProgress }
-  | { type: "RETRY_STEP" }
-  | { type: "RETRY_ALL" }
-  | { type: "CANCEL" }
-  | { type: "SET_CANCEL_FUNCTION"; cancelFunction: () => void };
+  | { type: typeof UploadEventType.START }
+  | { type: typeof UploadEventType.GETTING_URL }
+  | {
+      type: typeof UploadEventType.URL_RECEIVED;
+      uploadId: string;
+      uploadUrl: string;
+    }
+  | { type: typeof UploadEventType.UPLOADING }
+  | { type: typeof UploadEventType.NOTIFYING }
+  | { type: typeof UploadEventType.SUCCESS; result: unknown }
+  | { type: typeof UploadEventType.ERROR; error: string }
+  | { type: typeof UploadEventType.PROGRESS; value: UploadProgress }
+  | { type: typeof UploadEventType.RETRY_STEP }
+  | { type: typeof UploadEventType.RETRY_ALL }
+  | { type: typeof UploadEventType.CANCEL }
+  | {
+      type: typeof UploadEventType.SET_CANCEL_FUNCTION;
+      cancelFunction: () => void;
+    }
+  | {
+      type: typeof UploadEventType.SET_INITIAL_CONTEXT;
+      context: Partial<UploadContext>;
+    };
 
 export const uploadMachine = createMachine({
   id: "upload",
-  initial: "idle",
+  initial: UploadState.IDLE,
   context: {
     file: null,
     uploadId: null,
@@ -38,15 +82,15 @@ export const uploadMachine = createMachine({
     cancelFunction: undefined,
   } as UploadContext,
   on: {
-    SET_CANCEL_FUNCTION: {
+    [UploadEventType.SET_CANCEL_FUNCTION]: {
       actions: assign({
         cancelFunction: (_, event) => (event as any)?.cancelFunction,
       }),
     },
-    SET_INITIAL_CONTEXT: {
+    [UploadEventType.SET_INITIAL_CONTEXT]: {
       actions: assign((_, event) => (event as any)?.context || {}),
     },
-    PROGRESS: {
+    [UploadEventType.PROGRESS]: {
       actions: assign(({ event }) => {
         const progress = (event as any)?.value;
         return { progress };
@@ -54,109 +98,108 @@ export const uploadMachine = createMachine({
     },
   },
   states: {
-    idle: {
+    [UploadState.IDLE]: {
       on: {
-        START: {
-          target: "gettingUrl",
+        [UploadEventType.START]: {
+          target: UploadState.GETTING_URL,
         },
       },
     },
-    gettingUrl: {
+    [UploadState.GETTING_URL]: {
       on: {
-        GETTING_URL: {
+        [UploadEventType.GETTING_URL]: {
           // Stay in gettingUrl state while getting URL
         },
-        URL_RECEIVED: {
-          target: "uploading",
+        [UploadEventType.URL_RECEIVED]: {
+          target: UploadState.UPLOADING,
           actions: assign({
             uploadId: (_, event) => (event as any)?.uploadId ?? null,
             uploadUrl: (_, event) => (event as any)?.uploadUrl ?? null,
           }),
         },
-        ERROR: {
-          target: "failure",
+        [UploadEventType.ERROR]: {
+          target: UploadState.FAILURE,
           actions: assign({
             error: (_, event) => (event as any)?.error ?? "Unknown error",
           }),
         },
-        RETRY_STEP: {
-          target: "gettingUrl",
+        [UploadEventType.RETRY_STEP]: {
+          target: UploadState.GETTING_URL,
         },
-        CANCEL: {
-          target: "cancelled",
+        [UploadEventType.CANCEL]: {
+          target: UploadState.CANCELLED,
         },
       },
     },
-    uploading: {
+    [UploadState.UPLOADING]: {
       on: {
-        UPLOADING: {
+        [UploadEventType.UPLOADING]: {
           // Stay in uploading state while uploading
         },
-        NOTIFYING: {
-          target: "notifying",
+        [UploadEventType.NOTIFYING]: {
+          target: UploadState.NOTIFYING,
         },
-        SUCCESS: {
-          target: "success",
+        [UploadEventType.SUCCESS]: {
+          target: UploadState.SUCCESS,
           actions: assign({
             result: (_, event) => (event as any)?.result ?? null,
           }),
         },
-        ERROR: {
-          target: "failure",
+        [UploadEventType.ERROR]: {
+          target: UploadState.FAILURE,
           actions: assign({
             error: (_, event) => (event as any)?.error ?? "Unknown error",
           }),
         },
-
-        RETRY_STEP: {
-          target: "uploading",
+        [UploadEventType.RETRY_STEP]: {
+          target: UploadState.UPLOADING,
         },
-        CANCEL: {
-          target: "cancelled",
+        [UploadEventType.CANCEL]: {
+          target: UploadState.CANCELLED,
         },
       },
     },
-    notifying: {
+    [UploadState.NOTIFYING]: {
       on: {
-        SUCCESS: {
-          target: "success",
+        [UploadEventType.SUCCESS]: {
+          target: UploadState.SUCCESS,
           actions: assign({
             result: (_, event) => (event as any)?.result ?? null,
           }),
         },
-        ERROR: {
-          target: "failure",
+        [UploadEventType.ERROR]: {
+          target: UploadState.FAILURE,
           actions: assign({
             error: (_, event) => (event as any)?.error ?? "Unknown error",
           }),
         },
-        RETRY_STEP: {
-          target: "notifying",
+        [UploadEventType.RETRY_STEP]: {
+          target: UploadState.NOTIFYING,
         },
-        CANCEL: {
-          target: "cancelled",
+        [UploadEventType.CANCEL]: {
+          target: UploadState.CANCELLED,
         },
       },
     },
-    success: {
+    [UploadState.SUCCESS]: {
       type: "final",
     },
-    failure: {
+    [UploadState.FAILURE]: {
       on: {
-        RETRY_ALL: {
-          target: "gettingUrl",
+        [UploadEventType.RETRY_ALL]: {
+          target: UploadState.GETTING_URL,
           actions: assign({
             error: null,
             progress: null,
             result: null,
           }),
         },
-        RETRY_STEP: {
-          target: "gettingUrl",
+        [UploadEventType.RETRY_STEP]: {
+          target: UploadState.GETTING_URL,
         },
       },
     },
-    cancelled: {
+    [UploadState.CANCELLED]: {
       type: "final",
     },
   },

@@ -1,7 +1,11 @@
 import { useAtom, useSetAtom } from "jotai";
 import React, { useCallback, useRef } from "react";
 import { createActor } from "xstate";
-import { uploadMachine } from "../machines/uploadMachine";
+import {
+  uploadMachine,
+  UploadState,
+  UploadEventType,
+} from "../machines/uploadMachine";
 import { getUploadUrl, uploadFile, notifyCompletion } from "../api/mocks";
 import {
   uploadActorsAtom,
@@ -48,16 +52,16 @@ export const useUploader = () => {
         total++;
 
         if (
-          state.matches("uploading") ||
-          state.matches("gettingUrl") ||
-          state.matches("notifying")
+          state.matches(UploadState.UPLOADING) ||
+          state.matches(UploadState.GETTING_URL) ||
+          state.matches(UploadState.NOTIFYING)
         ) {
           uploading++;
-        } else if (state.matches("success")) {
+        } else if (state.matches(UploadState.SUCCESS)) {
           success++;
-        } else if (state.matches("failure")) {
+        } else if (state.matches(UploadState.FAILURE)) {
           failure++;
-        } else if (state.matches("cancelled")) {
+        } else if (state.matches(UploadState.CANCELLED)) {
           cancelled++;
         }
       });
@@ -119,7 +123,7 @@ export const useUploader = () => {
 
         // Set the initial context
         actor.send({
-          type: "SET_INITIAL_CONTEXT",
+          type: UploadEventType.SET_INITIAL_CONTEXT,
           context: {
             file,
             uploadId: id,
@@ -133,7 +137,7 @@ export const useUploader = () => {
         // Small delay to ensure context is set before sending START
         setTimeout(() => {
           // Send START event
-          actor.send({ type: "START" });
+          actor.send({ type: UploadEventType.START });
         }, 10);
 
         // Handle the upload process
@@ -150,7 +154,7 @@ export const useUploader = () => {
         const startUploadProcess = async () => {
           try {
             // Step 1: Get upload URL
-            actor.send({ type: "GETTING_URL" });
+            actor.send({ type: UploadEventType.GETTING_URL });
             const uploadUrlResponse = await getUploadUrl(file.name, file.size);
 
             if (isCancelled) {
@@ -159,20 +163,20 @@ export const useUploader = () => {
 
             // Update context with upload URL (keep original uploadId)
             actor.send({
-              type: "URL_RECEIVED",
+              type: UploadEventType.URL_RECEIVED,
               uploadId: id, // Use our original uploadId, not the API response id
               uploadUrl: uploadUrlResponse.uploadUrl,
             });
 
             // Step 2: Upload file
-            actor.send({ type: "UPLOADING" });
+            actor.send({ type: UploadEventType.UPLOADING });
             const uploadResult = await uploadFile(
               uploadUrlResponse.uploadUrl,
               file,
               (progress) => {
                 if (isCancelled) return;
                 // Send progress updates (removed console logs)
-                actor.send({ type: "PROGRESS", value: progress });
+                actor.send({ type: UploadEventType.PROGRESS, value: progress });
               },
               () => isCancelled
             );
@@ -233,8 +237,8 @@ export const useUploader = () => {
     if (!uploadActors || typeof uploadActors.forEach !== "function") return;
     uploadActors.forEach((actor) => {
       const state = actor.getSnapshot();
-      if (state.matches("idle")) {
-        actor.send({ type: "START" });
+      if (state.matches(UploadState.IDLE)) {
+        actor.send({ type: UploadEventType.START });
       }
     });
   }, [uploadActors]);
@@ -245,8 +249,11 @@ export const useUploader = () => {
     uploadActors.forEach((actor) => {
       const state = actor.getSnapshot();
       // Only retry failed uploads, not cancelled ones
-      if (state.matches("failure") && !state.matches("cancelled")) {
-        actor.send({ type: "RETRY_ALL" });
+      if (
+        state.matches(UploadState.FAILURE) &&
+        !state.matches(UploadState.CANCELLED)
+      ) {
+        actor.send({ type: UploadEventType.RETRY_ALL });
 
         // Restart the upload process - find the restart function for this specific upload
         // Find the upload ID by looking through the uploadActors map
@@ -289,8 +296,8 @@ export const useUploader = () => {
       const actor = uploadActors.get(id);
       if (actor) {
         const state = actor.getSnapshot();
-        if (state.matches("failure")) {
-          actor.send({ type: "RETRY_ALL" });
+        if (state.matches(UploadState.FAILURE)) {
+          actor.send({ type: UploadEventType.RETRY_ALL });
           // Restart the upload process
           const restartFunction = cancellationFunctions.current.get(
             `${id}_restart`
@@ -311,8 +318,11 @@ export const useUploader = () => {
       if (actor) {
         const state = actor.getSnapshot();
         // Only retry failed uploads, not cancelled ones
-        if (state.matches("failure") && !state.matches("cancelled")) {
-          actor.send({ type: "RETRY_STEP" });
+        if (
+          state.matches(UploadState.FAILURE) &&
+          !state.matches(UploadState.CANCELLED)
+        ) {
+          actor.send({ type: UploadEventType.RETRY_STEP });
           // Restart the upload process - find the restart function for this specific upload
           const restartKey = `${id}_restart`;
           const restartFunction = cancellationFunctions.current.get(restartKey);
@@ -332,16 +342,16 @@ export const useUploader = () => {
       if (actor) {
         const state = actor.getSnapshot();
         if (
-          state.matches("uploading") ||
-          state.matches("gettingUrl") ||
-          state.matches("notifying")
+          state.matches(UploadState.UPLOADING) ||
+          state.matches(UploadState.GETTING_URL) ||
+          state.matches(UploadState.NOTIFYING)
         ) {
           // Get the cancellation function from our stored map
           const cancelFunction = cancellationFunctions.current.get(id);
           if (cancelFunction && typeof cancelFunction === "function") {
             cancelFunction();
           }
-          actor.send({ type: "CANCEL" });
+          actor.send({ type: UploadEventType.CANCEL });
         }
       }
     },

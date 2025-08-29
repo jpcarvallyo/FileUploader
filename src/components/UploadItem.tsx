@@ -1,5 +1,6 @@
 import React from "react";
 import { useSelector } from "@xstate/react";
+import { UploadState } from "../machines/uploadMachine";
 
 interface UploadItemProps {
   id: string;
@@ -97,19 +98,19 @@ const UploadItem: React.FC<UploadItemProps> = ({
             borderRadius: "4px",
             fontSize: "12px",
             background:
-              actorState.value === "success"
+              actorState.value === UploadState.SUCCESS
                 ? "#d4edda"
-                : actorState.value === "failure"
+                : actorState.value === UploadState.FAILURE
                 ? "#f8d7da"
-                : actorState.value === "cancelled"
+                : actorState.value === UploadState.CANCELLED
                 ? "#f8d7da"
                 : "#fff3cd",
             color:
-              actorState.value === "success"
+              actorState.value === UploadState.SUCCESS
                 ? "#155724"
-                : actorState.value === "failure"
+                : actorState.value === UploadState.FAILURE
                 ? "#721c24"
-                : actorState.value === "cancelled"
+                : actorState.value === UploadState.CANCELLED
                 ? "#721c24"
                 : "#856404",
             width: "80px",
@@ -117,15 +118,15 @@ const UploadItem: React.FC<UploadItemProps> = ({
             flexShrink: 0,
           }}
         >
-          {actorState.value === "success"
+          {actorState.value === UploadState.SUCCESS
             ? "Success"
-            : actorState.value === "failure"
+            : actorState.value === UploadState.FAILURE
             ? "Failed"
-            : actorState.value === "cancelled"
+            : actorState.value === UploadState.CANCELLED
             ? "Cancelled"
-            : actorState.value === "uploading"
+            : actorState.value === UploadState.UPLOADING
             ? "Uploading"
-            : actorState.value === "gettingUrl"
+            : actorState.value === UploadState.GETTING_URL
             ? "Preparing"
             : "Ready"}
         </div>
@@ -185,7 +186,7 @@ const UploadItem: React.FC<UploadItemProps> = ({
             width: "70px",
           }}
         >
-          {actorState.value === "failure" && (
+          {actorState.value === UploadState.FAILURE && (
             <button
               onClick={() => retryStep(id)}
               style={{
@@ -208,8 +209,8 @@ const UploadItem: React.FC<UploadItemProps> = ({
             </button>
           )}
 
-          {(actorState.value === "uploading" ||
-            actorState.value === "gettingUrl") && (
+          {(actorState.value === UploadState.UPLOADING ||
+            actorState.value === UploadState.GETTING_URL) && (
             <button
               onClick={() => {
                 cancelUpload(id);
@@ -230,9 +231,9 @@ const UploadItem: React.FC<UploadItemProps> = ({
             </button>
           )}
 
-          {(actorState.value === "success" ||
-            actorState.value === "failure" ||
-            actorState.value === "cancelled") && (
+          {(actorState.value === UploadState.SUCCESS ||
+            actorState.value === UploadState.FAILURE ||
+            actorState.value === UploadState.CANCELLED) && (
             <button
               onClick={() => removeUpload(id)}
               style={{

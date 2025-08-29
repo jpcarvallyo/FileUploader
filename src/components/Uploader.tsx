@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUploader } from "../hooks/useUploader";
 import UploadItem from "./UploadItem";
+import { UploadState } from "../machines/uploadMachine";
 import "./Uploader.css";
 
 const Uploader: React.FC = () => {
@@ -28,13 +29,13 @@ const Uploader: React.FC = () => {
 
       uploadActors.forEach((actor) => {
         const state = actor.getSnapshot();
-        if (state.matches("failure")) {
+        if (state.matches(UploadState.FAILURE)) {
           hasFailed = true;
         }
         if (
-          state.matches("uploading") ||
-          state.matches("gettingUrl") ||
-          state.matches("notifying")
+          state.matches(UploadState.UPLOADING) ||
+          state.matches(UploadState.GETTING_URL) ||
+          state.matches(UploadState.NOTIFYING)
         ) {
           hasActive = true;
         }

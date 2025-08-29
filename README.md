@@ -235,7 +235,7 @@ To coordinate multiple uploads, I used Jotai as a lightweight state layer to hol
 
 **Reactivity**: Implemented local state with XState actor subscriptions for button states (`hasFailedUploads`, `hasActiveUploads`) instead of pure Jotai atoms, as the atoms weren't reactive enough to individual actor state changes.
 
-**Type Safety**: Sacrificed some TypeScript strictness for ActorRef types to ensure build compatibility with XState v5, using `ActorRef<any, any>` instead of fully typed generics.
+**Type Safety**: Used const objects instead of enums for state and event types to ensure build compatibility, while maintaining type safety through TypeScript's `as const` assertions.
 
 **Styling**: Kept UI styling minimal and semantic, prioritizing clarity and state feedback over design polish.
 

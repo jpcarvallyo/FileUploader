@@ -1,6 +1,7 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import type { ActorRef } from "xstate";
+import { UploadState } from "../machines/uploadMachine";
 
 // Interface for stored upload data
 export interface StoredUpload {
@@ -79,16 +80,16 @@ export const reactiveUploadSummaryAtom = atom((get) => {
     total++;
 
     if (
-      state.matches("uploading") ||
-      state.matches("gettingUrl") ||
-      state.matches("notifying")
+      state.matches(UploadState.UPLOADING) ||
+      state.matches(UploadState.GETTING_URL) ||
+      state.matches(UploadState.NOTIFYING)
     ) {
       uploading++;
-    } else if (state.matches("success")) {
+    } else if (state.matches(UploadState.SUCCESS)) {
       success++;
-    } else if (state.matches("failure")) {
+    } else if (state.matches(UploadState.FAILURE)) {
       failure++;
-    } else if (state.matches("cancelled")) {
+    } else if (state.matches(UploadState.CANCELLED)) {
       cancelled++;
     }
   });
@@ -137,9 +138,9 @@ export const uploadingCountAtom = atom((get) => {
   actors.forEach((actor) => {
     const state = actor.getSnapshot();
     if (
-      state.matches("uploading") ||
-      state.matches("gettingUrl") ||
-      state.matches("notifying")
+      state.matches(UploadState.UPLOADING) ||
+      state.matches(UploadState.GETTING_URL) ||
+      state.matches(UploadState.NOTIFYING)
     ) {
       count++;
     }
@@ -162,7 +163,7 @@ export const hasFailedUploadsAtom = atom((get) => {
 
   actors.forEach((actor) => {
     const state = actor.getSnapshot();
-    if (state.matches("failure")) {
+    if (state.matches(UploadState.FAILURE)) {
       hasFailed = true;
     }
   });
@@ -181,7 +182,7 @@ export const hasFailedUploadsReactiveAtom = atom((get) => {
   actors.forEach((actor) => {
     // Force subscription to actor state by accessing it
     const state = actor.getSnapshot();
-    if (state.matches("failure")) {
+    if (state.matches(UploadState.FAILURE)) {
       hasFailed = true;
     }
   });
