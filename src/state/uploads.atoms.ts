@@ -94,14 +94,6 @@ export const reactiveUploadSummaryAtom = atom((get) => {
     }
   });
 
-  console.log("reactiveUploadSummaryAtom calculated:", {
-    total,
-    uploading,
-    success,
-    failure,
-    cancelled,
-  });
-
   return {
     total,
     uploading,
@@ -164,26 +156,17 @@ export const hasActiveUploadsAtom = atom((get) => {
 export const hasFailedUploadsAtom = atom((get) => {
   const actors = get(uploadActorsAtom);
   if (!actors || typeof actors.keys !== "function") {
-    console.log("hasFailedUploadsAtom: No actors found");
     return false;
   }
 
   let hasFailed = false;
-  let totalActors = 0;
 
   actors.forEach((actor) => {
-    totalActors++;
     const state = actor.getSnapshot();
-    console.log(`hasFailedUploadsAtom: Actor ${actor.id} state:`, state.value);
     if (state.matches("failure")) {
       hasFailed = true;
-      console.log(`hasFailedUploadsAtom: Found failed upload ${actor.id}`);
     }
   });
-
-  console.log(
-    `hasFailedUploadsAtom: Total actors: ${totalActors}, Has failed: ${hasFailed}`
-  );
   return hasFailed;
 });
 

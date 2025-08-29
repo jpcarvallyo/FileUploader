@@ -4,240 +4,257 @@ import { useSelector } from "@xstate/react";
 interface UploadItemProps {
   id: string;
   actor: any;
-  onRetryStep: (id: string) => void;
-  onRetryAll: (id: string) => void;
-  onCancel: (id: string) => void;
-  onRemove: (id: string) => void;
+  fileInfoMap: Map<string, { name: string; size: number }>;
+  retryStep: (id: string) => void;
+  cancelUpload: (id: string) => void;
+  removeUpload: (id: string) => void;
 }
 
 const UploadItem: React.FC<UploadItemProps> = ({
   id,
   actor,
-  onRetryStep,
-  onRetryAll,
-  onCancel,
-  onRemove,
+  fileInfoMap,
+  retryStep,
+  cancelUpload,
+  removeUpload,
 }) => {
-  console.log("🔥 UPLOADITEM COMPONENT STARTING 🔥", id);
+  const actorState = useSelector(actor, (state: any) => state);
+  const progress = actorState.context.progress?.percentage ?? 0;
+  const { file } = actorState.context;
 
-  const state = useSelector(actor, (state) => state);
-  const progress = useSelector(actor, (state) => state.context.progress);
-  const { file, error } = state.context;
+  // Get file info from the fileInfoMap
+  const fileInfo = fileInfoMap.get(id);
+  const fileName = fileInfo?.name || file?.name || "Unknown file";
+  const fileSize = fileInfo?.size || file?.size || 0;
 
-  console.log("🔥 UPLOADITEM STATE EXTRACTED 🔥", {
-    id,
-    stateValue: state.value,
-    progress,
-  });
-
-  // Debug logging
-  console.log(`UploadItem ${id}:`, {
-    state: state.value,
-    progress,
-    hasProgress: !!progress,
-    progressPercentage: progress?.percentage,
-  });
-
-  console.log("🔥 CHECKING FILE 🔥", {
-    id,
-    file: !!file,
-    fileName: file?.name,
-  });
-  if (!file) {
-    console.log("🔥 RETURNING NULL - NO FILE 🔥", id);
-    return null;
-  }
-
-  const isActive =
-    state.matches("uploading") ||
-    state.matches("gettingUrl") ||
-    state.matches("notifying");
-
-  // Helper functions
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return "0 Bytes";
+  // Helper function to format bytes to human readable format
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return "0 B";
     const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
-  const getStatusBadge = (state: any) => {
-    const statusConfig = {
-      idle: { label: "Ready", className: "status-ready" },
-      gettingUrl: { label: "Getting URL", className: "status-uploading" },
-      uploading: { label: "Uploading", className: "status-uploading" },
-      notifying: { label: "Processing", className: "status-uploading" },
-      success: { label: "Success", className: "status-success" },
-      failure: { label: "Failed", className: "status-error" },
-      cancelled: { label: "Cancelled", className: "status-cancelled" },
-    };
-
-    const config =
-      statusConfig[state.value as keyof typeof statusConfig] ||
-      statusConfig.idle;
-
-    return (
-      <span className={`status-badge ${config.className}`}>{config.label}</span>
-    );
-  };
-
-  console.log("progress *******: ", progress);
-
-  console.log("__UPLOADITEM_MOUNT__", id, Date.now());
-  console.log("ACTOR SNAPSHOT", id, actor.getSnapshot?.()?.value);
-  console.log("🔥 THIS IS THE UPLOADITEM FILE BEING USED 🔥");
-
-  console.log("🔥 ABOUT TO RENDER JSX 🔥", id);
+  // Removed console log to reduce noise
 
   return (
     <div
       className="upload-item"
-      data-test="UPLOADITEM-MARKER"
-      style={{ outline: "3px dashed hotpink", padding: 4 }}
+      style={{
+        border: "2px solid #ddd",
+        borderRadius: "8px",
+        padding: "16px",
+        margin: "8px 0",
+        background: "white",
+      }}
     >
+      {/* First Row: File Name */}
       <div
         style={{
-          background: "hotpink",
-          color: "black",
-          fontWeight: 700,
-          fontSize: "20px",
-          padding: "10px",
+          marginBottom: "12px",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        🔥 THIS IS THE UPLOADITEM FILE BEING USED 🔥
-      </div>
-      <div className="upload-info">
-        <div className="upload-header">
-          <span className="upload-filename">{file.name}</span>
-          <span className="upload-size">{formatFileSize(file.size)}</span>
-        </div>
-
-        <div className="upload-status">
-          {getStatusBadge(state)}
-          {error && <span className="upload-error">{error}</span>}
-        </div>
-
-        {/* Progress percentage display */}
         <div
           style={{
-            background: "yellow",
-            color: "black",
-            padding: "8px",
-            margin: "8px 0",
-            fontSize: "16px",
             fontWeight: "bold",
+            fontSize: "14px",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+          title={fileName}
+        >
+          {fileName.length > 25 ? `${fileName.substring(0, 25)}...` : fileName}
+        </div>
+        {/* Size */}
+        <div
+          style={{
+            fontSize: "12px",
+            color: "#666",
+            minWidth: "60px",
           }}
         >
-          PROGRESS TEST: {progress?.percentage ?? "NO PROGRESS"}%
+          {fileSize > 0 ? formatBytes(fileSize) : ""}
         </div>
-
-        {(() => {
-          const pct = progress?.percentage ?? 0;
-          console.log(
-            "__PROGRESS_PRESENT__",
-            !!progress,
-            "state:",
-            state.value,
-            "pct:",
-            pct
-          );
-
-          return (
-            (progress ||
-              state.value === "uploading" ||
-              state.value === "success") && (
-              <div
-                data-test="progress-block"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  marginTop: 12,
-                  padding: 8,
-                  background: "rgba(255,0,0,0.05)",
-                  border: "2px dashed red",
-                  position: "relative",
-                  zIndex: 9999,
-                }}
-              >
-                <div
-                  style={{
-                    background: "lime",
-                    color: "black",
-                    padding: "4px",
-                    fontSize: "12px",
-                  }}
-                >
-                  PROGRESS BLOCK RENDERED
-                </div>
-                <div
-                  style={{
-                    width: 320,
-                    height: 24,
-                    background: "#eee",
-                    borderRadius: 4,
-                    overflow: "hidden",
-                    border: "1px solid #ddd",
-                  }}
-                >
-                  <div
-                    data-test="progress-fill"
-                    style={{
-                      width: `${pct}%`,
-                      height: "100%",
-                      background: "red",
-                      transition: "width 80ms linear",
-                    }}
-                  />
-                </div>
-                {!progress && (
-                  <div style={{ color: "orange", fontSize: "12px" }}>
-                    Progress data missing, but state is: {state.value}
-                  </div>
-                )}
-                <div
-                  data-test="progress-text"
-                  style={{ fontFamily: "monospace" }}
-                >
-                  {pct}% ({progress?.loaded}/{progress?.total})
-                </div>
-              </div>
-            )
-          );
-        })()}
       </div>
 
-      <div className="upload-actions">
-        {state.matches("failure") && (
-          <>
-            <button
-              onClick={() => onRetryStep(id)}
-              className="btn btn-sm btn-secondary"
-            >
-              Retry Step
-            </button>
-            <button
-              onClick={() => onRetryAll(id)}
-              className="btn btn-sm btn-primary"
-            >
-              Retry All
-            </button>
-          </>
-        )}
+      {/* Second Row: State, Progress, and Actions */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "40px",
+        }}
+      >
+        {/* State Badge */}
+        <div
+          style={{
+            padding: "4px 8px",
+            borderRadius: "4px",
+            fontSize: "12px",
+            background:
+              actorState.value === "success"
+                ? "#d4edda"
+                : actorState.value === "failure"
+                ? "#f8d7da"
+                : actorState.value === "cancelled"
+                ? "#f8d7da"
+                : "#fff3cd",
+            color:
+              actorState.value === "success"
+                ? "#155724"
+                : actorState.value === "failure"
+                ? "#721c24"
+                : actorState.value === "cancelled"
+                ? "#721c24"
+                : "#856404",
+            width: "80px",
+            textAlign: "center",
+            flexShrink: 0,
+          }}
+        >
+          {actorState.value === "success"
+            ? "Success"
+            : actorState.value === "failure"
+            ? "Failed"
+            : actorState.value === "cancelled"
+            ? "Cancelled"
+            : actorState.value === "uploading"
+            ? "Uploading"
+            : actorState.value === "gettingUrl"
+            ? "Preparing"
+            : "Ready"}
+        </div>
 
-        {isActive && (
-          <button
-            onClick={() => onCancel(id)}
-            className="btn btn-sm btn-warning"
+        {/* Progress */}
+        <div style={{ width: "200px", flexShrink: 0 }}>
+          <div
+            style={{
+              width: "100%",
+              height: "8px",
+              background: "#e9ecef",
+              borderRadius: "4px",
+              overflow: "hidden",
+              marginBottom: "4px",
+              position: "relative",
+            }}
           >
-            Cancel
-          </button>
-        )}
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: `${progress}%`,
+                height: "100%",
+                background: "#007bff",
+                transition: "width 0.3s ease",
+                borderRadius: "4px",
+                minWidth: "0%",
+                maxWidth: "100%",
+              }}
+            />
+          </div>
+          <div
+            style={{
+              fontSize: "12px",
+              color: "#666",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              width: "100%",
+            }}
+          >
+            <span style={{ minWidth: "40px" }}>{progress}%</span>
+            <span style={{ minWidth: "120px", textAlign: "right" }}>
+              {formatBytes(actorState.context.progress?.loaded || 0)} /{" "}
+              {formatBytes(actorState.context.progress?.total || 0)}
+            </span>
+          </div>
+        </div>
 
-        <button onClick={() => onRemove(id)} className="btn btn-sm btn-danger">
-          Remove
-        </button>
+        {/* Action Buttons */}
+        <div
+          style={{
+            display: "flex",
+            gap: "6px",
+            flexShrink: 0,
+            width: "70px",
+          }}
+        >
+          {actorState.value === "failure" && (
+            <button
+              onClick={() => retryStep(id)}
+              style={{
+                padding: "6px",
+                fontSize: "14px",
+                background: "#6c757d",
+                color: "white",
+                border: "none",
+                borderRadius: "3px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "28px",
+                height: "28px",
+              }}
+              title="Retry"
+            >
+              <i className="fas fa-redo"></i>
+            </button>
+          )}
+
+          {(actorState.value === "uploading" ||
+            actorState.value === "gettingUrl") && (
+            <button
+              onClick={() => {
+                cancelUpload(id);
+                // Remove the upload after a short delay to allow cancellation to complete
+                setTimeout(() => removeUpload(id), 100);
+              }}
+              style={{
+                padding: "4px 8px",
+                fontSize: "11px",
+                background: "#dc3545",
+                color: "white",
+                border: "none",
+                borderRadius: "3px",
+                cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
+          )}
+
+          {(actorState.value === "success" ||
+            actorState.value === "failure" ||
+            actorState.value === "cancelled") && (
+            <button
+              onClick={() => removeUpload(id)}
+              style={{
+                padding: "6px",
+                fontSize: "14px",
+                background: "#6c757d",
+                color: "white",
+                border: "none",
+                borderRadius: "3px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "28px",
+                height: "28px",
+              }}
+              title="Remove"
+            >
+              <i className="fas fa-trash"></i>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

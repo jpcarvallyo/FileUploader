@@ -42,17 +42,10 @@ export const getUploadUrl = async (
   const currentAttempts = retryAttempts.get(filename) || 0;
   retryAttempts.set(filename, currentAttempts + 1);
 
-  console.log(`getUploadUrl attempt ${currentAttempts + 1} for ${filename}`);
-
   // Fail on first attempt, succeed on all retry attempts
   if (currentAttempts === 0) {
-    console.log(`getUploadUrl failing on first attempt for ${filename}`);
     throw new Error("Failed to get upload URL - network error");
   }
-
-  console.log(
-    `getUploadUrl succeeding on attempt ${currentAttempts + 1} for ${filename}`
-  );
   return {
     id: `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     uploadUrl: `https://api.example.com/upload/${Date.now()}?size=${size}`,
@@ -64,7 +57,8 @@ export const getUploadUrl = async (
 export const uploadFile = async (
   uploadUrl: string,
   file: File,
-  onProgress?: (progress: UploadProgress) => void
+  onProgress?: (progress: UploadProgress) => void,
+  isCancelled?: () => boolean
 ): Promise<UploadResult> => {
   // Simulate upload with progress
   const total = file.size;
@@ -72,20 +66,20 @@ export const uploadFile = async (
 
   // Track retry attempts for this file
   const currentAttempts = retryAttempts.get(file.name) || 0;
-  console.log(`uploadFile attempt ${currentAttempts + 1} for ${file.name}`);
 
   // Fail on first attempt, succeed on all retry attempts
   if (currentAttempts === 0) {
-    console.log(`uploadFile failing on first attempt for ${file.name}`);
     throw new Error("Upload failed - network error");
   }
 
-  console.log(
-    `uploadFile succeeding on attempt ${currentAttempts + 1} for ${file.name}`
-  );
-
   // Simulate progress updates
   const progressInterval = setInterval(() => {
+    // Check if cancelled before sending progress
+    if (isCancelled && isCancelled()) {
+      clearInterval(progressInterval);
+      return;
+    }
+
     loaded += Math.random() * (total / 20); // Random progress increment
     if (loaded >= total) {
       loaded = total;
@@ -100,8 +94,15 @@ export const uploadFile = async (
   }, 100 + Math.random() * 200);
 
   // Wait for upload to complete
-  await new Promise((resolve) => {
+  await new Promise((resolve, reject) => {
     const checkComplete = () => {
+      // Check if cancelled
+      if (isCancelled && isCancelled()) {
+        clearInterval(progressInterval);
+        reject(new Error("Upload cancelled"));
+        return;
+      }
+
       if (loaded >= total) {
         resolve(undefined);
       } else {
@@ -134,21 +135,11 @@ export const notifyCompletion = async (
 
   // Track retry attempts for this file
   const currentAttempts = retryAttempts.get(filename) || 0;
-  console.log(
-    `notifyCompletion attempt ${currentAttempts + 1} for ${filename}`
-  );
 
   // Fail on first attempt, succeed on all retry attempts
   if (currentAttempts === 0) {
-    console.log(`notifyCompletion failing on first attempt for ${filename}`);
     throw new Error("Failed to notify completion - network error");
   }
-
-  console.log(
-    `notifyCompletion succeeding on attempt ${
-      currentAttempts + 1
-    } for ${filename}`
-  );
 
   return {
     success: true,

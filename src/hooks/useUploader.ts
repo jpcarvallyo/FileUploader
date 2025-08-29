@@ -62,14 +62,6 @@ export const useUploader = () => {
         }
       });
 
-      console.log("Updating summary:", {
-        total,
-        uploading,
-        success,
-        failure,
-        cancelled,
-      });
-
       setSummaryState({
         total,
         uploading,
@@ -121,11 +113,9 @@ export const useUploader = () => {
 
         // Add actor to store
         addUploadActor(id, actor);
-        console.log(`Actor created with ID: ${id}`);
 
         // Start the upload process
         actor.start();
-        console.log(`Actor started for ID: ${id}`);
 
         // Set the initial context
         actor.send({
@@ -144,15 +134,9 @@ export const useUploader = () => {
         setTimeout(() => {
           // Send START event
           actor.send({ type: "START" });
-          console.log(`START event sent for ID: ${id}`);
         }, 10);
 
-        // Check initial state
-        const initialState = actor.getSnapshot();
-        console.log(`Initial state for ${id}:`, initialState.value);
-
         // Handle the upload process
-        console.log(`Starting upload for file: ${file.name}`);
 
         // Create a cancellation token for this upload
         let isCancelled = false;
@@ -160,25 +144,18 @@ export const useUploader = () => {
         // Store the cancellation function in the actor's context
         const cancelUpload = () => {
           isCancelled = true;
-          console.log(`Upload ${id} cancelled`);
         };
 
         // Upload process function
         const startUploadProcess = async () => {
           try {
-            console.log("=== UPLOAD PROCESS STARTING ===");
-
             // Step 1: Get upload URL
-            console.log("Getting upload URL...");
             actor.send({ type: "GETTING_URL" });
             const uploadUrlResponse = await getUploadUrl(file.name, file.size);
 
             if (isCancelled) {
-              console.log(`Upload ${id} cancelled after getting URL`);
               return;
             }
-
-            console.log("Upload URL received:", uploadUrlResponse);
 
             // Update context with upload URL (keep original uploadId)
             actor.send({
@@ -186,10 +163,8 @@ export const useUploader = () => {
               uploadId: id, // Use our original uploadId, not the API response id
               uploadUrl: uploadUrlResponse.uploadUrl,
             });
-            console.log("URL_RECEIVED event sent");
 
             // Step 2: Upload file
-            console.log("Starting file upload...");
             actor.send({ type: "UPLOADING" });
             const uploadResult = await uploadFile(
               uploadUrlResponse.uploadUrl,
@@ -198,44 +173,32 @@ export const useUploader = () => {
                 if (isCancelled) return;
                 // Send progress updates (removed console logs)
                 actor.send({ type: "PROGRESS", value: progress });
-              }
+              },
+              () => isCancelled
             );
 
             if (isCancelled) {
-              console.log(`Upload ${id} cancelled after file upload`);
               return;
             }
 
-            console.log("Upload completed:", uploadResult);
-
             // Step 3: Notify completion (simplified - go directly to success)
-            console.log("Notifying completion...");
             await notifyCompletion(uploadResult.id, file.name);
 
             if (isCancelled) {
-              console.log(`Upload ${id} cancelled after notification`);
               return;
             }
 
             // Step 4: Success
-            console.log("Upload successful!");
             actor.send({ type: "SUCCESS", result: uploadResult });
           } catch (error) {
             if (isCancelled) {
-              console.log(`Upload ${id} cancelled during error handling`);
               return;
             }
-            console.error("Upload error:", error);
-            console.log(
-              `Sending ERROR event to actor ${id} with error:`,
-              error instanceof Error ? error.message : "Unknown error"
-            );
             // Handle error
             actor.send({
               type: "ERROR",
               error: error instanceof Error ? error.message : "Unknown error",
             });
-            console.log(`ERROR event sent to actor ${id}`);
           }
         };
 
@@ -247,10 +210,7 @@ export const useUploader = () => {
 
         // Store the restart function in our cancellation map
         cancellationFunctions.current.set(`${id}_restart`, () => {
-          console.log(`Restarting upload process for ${id}`);
-          console.log(`About to call uploadProcessRef.current for ${id}`);
           setTimeout(() => {
-            console.log(`Executing uploadProcessRef.current for ${id}`);
             uploadProcessRef.current();
           }, 100);
         });
@@ -286,15 +246,7 @@ export const useUploader = () => {
       const state = actor.getSnapshot();
       // Only retry failed uploads, not cancelled ones
       if (state.matches("failure") && !state.matches("cancelled")) {
-        console.log(`Retrying failed upload ${actor.id}`);
-        console.log(`Actor state before retry:`, state.value);
-        console.log(`Actor context before retry:`, state.context);
         actor.send({ type: "RETRY_ALL" });
-
-        // Get the state after sending RETRY_ALL to see if uploadId is preserved
-        const stateAfterRetry = actor.getSnapshot();
-        console.log(`Actor state after retry:`, stateAfterRetry.value);
-        console.log(`Actor context after retry:`, stateAfterRetry.context);
 
         // Restart the upload process - find the restart function for this specific upload
         // Find the upload ID by looking through the uploadActors map
@@ -308,21 +260,9 @@ export const useUploader = () => {
         if (uploadId) {
           const restartKey = `${uploadId}_restart`;
           const restartFunction = cancellationFunctions.current.get(restartKey);
-          console.log(
-            `Found upload ID: ${uploadId}, looking for restart key: ${restartKey}`
-          );
-          console.log(
-            `All cancellation functions:`,
-            Array.from(cancellationFunctions.current.keys())
-          );
           if (restartFunction && typeof restartFunction === "function") {
-            console.log(`Calling restart function for ${restartKey}`);
             restartFunction();
-          } else {
-            console.log(`No restart function found for ${restartKey}`);
           }
-        } else {
-          console.log(`Could not find upload ID for actor ${actor.id}`);
         }
       }
     });
@@ -350,7 +290,6 @@ export const useUploader = () => {
       if (actor) {
         const state = actor.getSnapshot();
         if (state.matches("failure")) {
-          console.log(`Retrying upload ${id} from beginning`);
           actor.send({ type: "RETRY_ALL" });
           // Restart the upload process
           const restartFunction = cancellationFunctions.current.get(
@@ -373,20 +312,12 @@ export const useUploader = () => {
         const state = actor.getSnapshot();
         // Only retry failed uploads, not cancelled ones
         if (state.matches("failure") && !state.matches("cancelled")) {
-          console.log(`Retrying step for upload ${id}`);
           actor.send({ type: "RETRY_STEP" });
           // Restart the upload process - find the restart function for this specific upload
           const restartKey = `${id}_restart`;
           const restartFunction = cancellationFunctions.current.get(restartKey);
-          console.log(
-            `Looking for restart key: ${restartKey}, found function:`,
-            restartFunction
-          );
           if (restartFunction && typeof restartFunction === "function") {
-            console.log(`Calling restart function for ${restartKey}`);
             restartFunction();
-          } else {
-            console.log(`No restart function found for ${restartKey}`);
           }
         }
       }
@@ -408,7 +339,6 @@ export const useUploader = () => {
           // Get the cancellation function from our stored map
           const cancelFunction = cancellationFunctions.current.get(id);
           if (cancelFunction && typeof cancelFunction === "function") {
-            console.log(`Calling cancelFunction for upload ${id}`);
             cancelFunction();
           }
           actor.send({ type: "CANCEL" });

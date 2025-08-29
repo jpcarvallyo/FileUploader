@@ -1,15 +1,12 @@
-import React, { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useUploader } from "../hooks/useUploader";
-import { useSelector } from "@xstate/react";
-import ProgressUploadItem from "./ProgressUploadItem";
+import UploadItem from "./UploadItem";
 import "./Uploader.css";
 
 const Uploader: React.FC = () => {
   const {
     summary,
-    hasActiveUploads,
     addFiles,
-    startAll,
     retryAll,
     cancelAll,
     retryStep,
@@ -20,32 +17,57 @@ const Uploader: React.FC = () => {
     fileInfoMap,
   } = useUploader();
 
-  // Subscribe to the first actor's state (like individual items do)
-  const actorsArray = Array.from(uploadActors.values());
-  const firstActor = actorsArray[0];
-  const firstActorState = useSelector(
-    firstActor,
-    (state) => state?.value || null
-  );
+  // Check all actors for failure and active states with state subscription
+  const [hasFailedUploads, setHasFailedUploads] = useState(false);
+  const [hasActiveUploads, setHasActiveUploads] = useState(false);
 
-  // Check all actors for failure state
-  const hasFailedUploads = React.useMemo(() => {
-    let hasFailed = false;
-    uploadActors.forEach((actor) => {
-      const state = actor.getSnapshot();
-      if (state.matches("failure")) {
-        hasFailed = true;
-      }
-    });
-    return hasFailed;
-  }, [uploadActors, firstActorState]); // Recalculate when first actor state changes
+  useEffect(() => {
+    const checkUploadStates = () => {
+      let hasFailed = false;
+      let hasActive = false;
 
-  console.log(
-    "First actor state:",
-    firstActorState,
-    "hasFailedUploads:",
-    hasFailedUploads
-  );
+      uploadActors.forEach((actor) => {
+        const state = actor.getSnapshot();
+        if (state.matches("failure")) {
+          hasFailed = true;
+        }
+        if (
+          state.matches("uploading") ||
+          state.matches("gettingUrl") ||
+          state.matches("notifying")
+        ) {
+          hasActive = true;
+        }
+      });
+
+      setHasFailedUploads(hasFailed);
+      setHasActiveUploads(hasActive);
+    };
+
+    // Initial check
+    checkUploadStates();
+
+    // Only set up subscriptions if there are actors
+    if (uploadActors.size === 0) {
+      return;
+    }
+
+    // Subscribe to all actor state changes
+    const subscriptions = Array.from(uploadActors.values()).map((actor) =>
+      actor.subscribe(() => {
+        checkUploadStates();
+      })
+    );
+
+    // Cleanup subscriptions
+    return () => {
+      subscriptions.forEach((unsubscribe) => {
+        if (unsubscribe && typeof unsubscribe === "function") {
+          unsubscribe();
+        }
+      });
+    };
+  }, [uploadActors]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -54,9 +76,7 @@ const Uploader: React.FC = () => {
   const handleFileSelect = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const files = event.target.files;
-      console.log("Files selected:", files);
       if (files && files.length > 0) {
-        console.log("Adding files to uploader...");
         addFiles(files);
         // Clear the file input so the same file can be selected again
         if (fileInputRef.current) {
@@ -88,9 +108,7 @@ const Uploader: React.FC = () => {
       setIsDragOver(false);
 
       const files = event.dataTransfer.files;
-      console.log("Files dropped:", files);
       if (files && files.length > 0) {
-        console.log("Adding dropped files to uploader...");
         addFiles(files);
         // Clear the file input so the same file can be selected again
         if (fileInputRef.current) {
@@ -141,29 +159,13 @@ const Uploader: React.FC = () => {
       {/* Toolbar */}
       {uploadActors && uploadActors.size > 0 && (
         <div className="uploader-toolbar">
-          {(() => {
-            console.log("Toolbar Debug:", {
-              hasActiveUploads,
-              hasFailedUploads,
-              summary,
-              uploadCount: uploadActors.size,
-            });
-            return null;
-          })()}
           <div className="toolbar-left">
-            <button
-              onClick={startAll}
-              disabled={!hasActiveUploads}
-              className="btn btn-primary"
-            >
-              Start All
-            </button>
             <button
               onClick={retryAll}
               disabled={!hasFailedUploads}
               className="btn btn-secondary"
             >
-              Retry All ({hasFailedUploads ? "Enabled" : "Disabled"})
+              Retry All
             </button>
             <button
               onClick={cancelAll}
@@ -185,10 +187,8 @@ const Uploader: React.FC = () => {
       {uploadActors && uploadActors.size > 0 && (
         <div className="upload-list">
           {Array.from(uploadActors.entries()).map(([id, actor]) => {
-            console.log("RENDER ROW", id, actor.getSnapshot?.()?.value);
-
             return (
-              <ProgressUploadItem
+              <UploadItem
                 key={id}
                 id={id}
                 actor={actor}
