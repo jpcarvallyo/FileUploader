@@ -1,6 +1,26 @@
 import { atom } from "jotai";
+import { atomWithStorage } from "jotai/utils";
 import type { ActorRef } from "xstate";
 import type { uploadMachine } from "../machines/uploadMachine";
+
+// Interface for stored upload data
+export interface StoredUpload {
+  id: string;
+  name: string;
+  size: number;
+  status: "pending" | "uploading" | "success" | "failure" | "cancelled";
+  progress?: number;
+  error?: string;
+  result?: unknown;
+  uploadUrl?: string;
+  createdAt: number;
+}
+
+// Store persisted upload data
+export const storedUploadsAtom = atomWithStorage<StoredUpload[]>(
+  "uploader-stored-uploads",
+  []
+);
 
 // Store actor references for each upload
 export const uploadActorsAtom = atom<
@@ -16,64 +36,24 @@ export const uploadIdsAtom = atom((get) => {
   return Array.from(actors.keys());
 });
 
-// Summary atoms
+// Writable summary state
+export const uploadSummaryStateAtom = atom<{
+  total: number;
+  uploading: number;
+  success: number;
+  failure: number;
+  cancelled: number;
+}>({
+  total: 0,
+  uploading: 0,
+  success: 0,
+  failure: 0,
+  cancelled: 0,
+});
+
+// Summary atoms (read-only, derived from state)
 export const uploadSummaryAtom = atom((get) => {
-  const actors = get(uploadActorsAtom);
-  if (!actors || typeof actors.keys !== "function") {
-    return {
-      total: 0,
-      uploading: 0,
-      success: 0,
-      failure: 0,
-      cancelled: 0,
-    };
-  }
-
-  let total = 0;
-  let uploading = 0;
-  let success = 0;
-  let failure = 0;
-  let cancelled = 0;
-
-  actors.forEach((actor) => {
-    const state = actor.getSnapshot();
-    total++;
-
-    if (
-      state.matches("uploading") ||
-      state.matches("gettingUrl") ||
-      state.matches("notifying")
-    ) {
-      uploading++;
-    } else if (state.matches("success")) {
-      success++;
-    } else if (state.matches("failure")) {
-      failure++;
-    } else if (state.matches("cancelled")) {
-      cancelled++;
-    }
-  });
-
-  console.log("uploadSummaryAtom calculated:", {
-    total,
-    uploading,
-    success,
-    failure,
-    cancelled,
-  });
-
-  // Force reactivity by accessing each actor's state
-  actors.forEach((actor) => {
-    const state = actor.getSnapshot();
-    console.log(`uploadSummaryAtom: Actor ${actor.id} state:`, state.value);
-  });
-  return {
-    total,
-    uploading,
-    success,
-    failure,
-    cancelled,
-  };
+  return get(uploadSummaryStateAtom);
 });
 
 // Create a reactive summary atom that subscribes to actor state changes

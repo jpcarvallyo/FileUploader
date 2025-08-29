@@ -1,11 +1,12 @@
 import { useAtom, useSetAtom } from "jotai";
-import { useCallback, useRef } from "react";
+import React, { useCallback, useRef } from "react";
 import { createActor } from "xstate";
 import { uploadMachine } from "../machines/uploadMachine";
 import { getUploadUrl, uploadFile, notifyCompletion } from "../api/mocks";
 import {
   uploadActorsAtom,
   uploadSummaryAtom,
+  uploadSummaryStateAtom,
   addUploadActorAtom,
   removeUploadActorAtom,
   clearUploadActorsAtom,
@@ -29,6 +30,72 @@ export const useUploader = () => {
   const addUploadActor = useSetAtom(addUploadActorAtom);
   const removeUploadActor = useSetAtom(removeUploadActorAtom);
   const clearUploadActors = useSetAtom(clearUploadActorsAtom);
+  const setSummaryState = useSetAtom(uploadSummaryStateAtom);
+
+  // Subscribe to actor state changes and update summary
+  React.useEffect(() => {
+    if (!uploadActors || typeof uploadActors.forEach !== "function") return;
+
+    const updateSummary = () => {
+      let total = 0;
+      let uploading = 0;
+      let success = 0;
+      let failure = 0;
+      let cancelled = 0;
+
+      uploadActors.forEach((actor) => {
+        const state = actor.getSnapshot();
+        total++;
+
+        if (
+          state.matches("uploading") ||
+          state.matches("gettingUrl") ||
+          state.matches("notifying")
+        ) {
+          uploading++;
+        } else if (state.matches("success")) {
+          success++;
+        } else if (state.matches("failure")) {
+          failure++;
+        } else if (state.matches("cancelled")) {
+          cancelled++;
+        }
+      });
+
+      console.log("Updating summary:", {
+        total,
+        uploading,
+        success,
+        failure,
+        cancelled,
+      });
+
+      setSummaryState({
+        total,
+        uploading,
+        success,
+        failure,
+        cancelled,
+      });
+    };
+
+    // Initial update
+    updateSummary();
+
+    // Subscribe to all actors
+    const subscriptions: Array<() => void> = [];
+
+    uploadActors.forEach((actor) => {
+      const subscription = actor.subscribe(() => {
+        updateSummary();
+      });
+      subscriptions.push(subscription.unsubscribe);
+    });
+
+    return () => {
+      subscriptions.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [uploadActors, setSummaryState]);
 
   // Store cancellation functions for each upload
   const cancellationFunctions = useRef(new Map<string, () => void>());
@@ -129,16 +196,7 @@ export const useUploader = () => {
               file,
               (progress) => {
                 if (isCancelled) return;
-                console.log("Progress:", progress);
-                // Send progress updates
-                const currentState = actor.getSnapshot();
-                console.log(`Sending PROGRESS event to actor ${id}:`, progress);
-                console.log(`Current actor state:`, currentState.value);
-                console.log(`Event object being sent:`, {
-                  type: "PROGRESS",
-                  value: progress,
-                });
-                // Send with value property
+                // Send progress updates (removed console logs)
                 actor.send({ type: "PROGRESS", value: progress });
               }
             );

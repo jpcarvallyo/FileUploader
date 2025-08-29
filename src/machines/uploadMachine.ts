@@ -48,9 +48,7 @@ export const uploadMachine = createMachine({
     },
     PROGRESS: {
       actions: assign(({ event }) => {
-        console.log("Global PROGRESS event received:", event);
         const progress = (event as any)?.value;
-        console.log("Global extracted progress:", progress);
         return { progress };
       }),
     },

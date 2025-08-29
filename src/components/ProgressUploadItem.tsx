@@ -36,17 +36,7 @@ const ProgressUploadItem: React.FC<ProgressUploadItemProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
-  console.log("ProgressUploadItem render:", {
-    id,
-    progress,
-    state: actorState.value,
-    progressData: actorState.context.progress,
-    file: file,
-    fileName: fileName,
-    contextKeys: Object.keys(actorState.context),
-    fullContext: actorState.context,
-    actorSnapshot: actor.getSnapshot(),
-  });
+  // Removed console log to reduce noise
 
   return (
     <div
