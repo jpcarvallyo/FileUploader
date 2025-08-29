@@ -121,6 +121,7 @@ const Uploader: React.FC = () => {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={handleFileInputClick}
+        data-testid="drop-zone"
       >
         <input
           ref={fileInputRef}
@@ -128,6 +129,7 @@ const Uploader: React.FC = () => {
           multiple
           onChange={handleFileSelect}
           style={{ display: "none" }}
+          data-testid="file-input"
         />
         <div className="file-input-content">
           <div className="upload-icon">📁</div>
