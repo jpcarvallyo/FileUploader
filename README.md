@@ -125,7 +125,7 @@ npm test
 
 ### Prerequisites
 
-- Node.js (version specified in `.nvmrc`)
+- **Node.js**: Version 20.19+ or 22.12+ (recommended: Node.js 22 as specified in `.nvmrc`)
 - npm or yarn
 
 ### Setup
