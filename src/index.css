@@ -30,41 +30,6 @@ body {
   color: #213547;
 }
 
-/* Upload list styles */
-
-.upload-item {
-  border: 2px solid green;
-  margin: 10px 0;
-  padding: 10px;
-  background: rgba(0, 255, 0, 0.1);
-}
-
-/* Progress bar styles */
-.upload-progress {
-  margin-top: 6px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.progress-bar {
-  height: 6px;
-  background: #eee;
-  border-radius: 3px;
-  overflow: hidden;
-  flex: 1;
-  border: 1px solid #ddd; /* Temporary border for debugging */
-}
-.progress-fill {
-  height: 100%;
-  background: #3b82f6;
-  transition: width 120ms linear;
-}
-.progress-text {
-  font-size: 12px;
-  color: #555;
-  min-width: 40px;
-}
-
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
