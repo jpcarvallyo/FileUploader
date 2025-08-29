@@ -2,6 +2,12 @@
 
 A modern React file upload application built with TypeScript, featuring concurrent upload management, retry logic, and real-time progress tracking.
 
+## 🎥 Demo
+
+Watch the application in action: [Demo Recording](https://www.loom.com/share/a522cd0fdecb405aac0aafe7cacc10a4?sid=ca129a55-1942-4ee7-845a-54efa69a47ff)
+
+[![Demo Video](https://cdn.loom.com/sessions/thumbnails/a522cd0fdecb405aac0aafe7cacc10a4-with-play.gif)](https://www.loom.com/share/a522cd0fdecb405aac0aafe7cacc10a4?sid=ca129a55-1942-4ee7-845a-54efa69a47ff)
+
 ## 🚀 Features
 
 - **Concurrent File Uploads**: Upload multiple files simultaneously with individual progress tracking
@@ -44,9 +50,19 @@ src/
 
 ## 🏗️ Architecture
 
-### State Management (Jotai)
+### Custom Hook Pattern
 
-The application uses Jotai for atomic state management with the following key atoms:
+The application follows the **custom hook pattern** to encapsulate complex business logic and state management. The `useUploader` hook serves as the main interface between the UI components and the underlying state management system.
+
+**Benefits of this pattern:**
+
+- **Separation of Concerns**: UI components focus on rendering, hooks handle business logic
+- **Reusability**: The upload logic can be easily reused across different components
+- **Testability**: Business logic can be tested independently of UI components
+- **Maintainability**: Complex state management is centralized in one place
+- **Type Safety**: Full TypeScript support with proper type inference
+
+### State Management (Jotai)
 
 - **`uploadActorsAtom`**: Stores XState actor references for each upload
 - **`storedUploadsAtom`**: Reserved for future persistence implementation
@@ -201,7 +217,31 @@ const {
 - **`failure`**: Upload failed
 - **`cancelled`**: Upload cancelled
 
-## 🤝 Contributing
+## 🎯 Approach & Trade-offs
+
+### Design Philosophy
+
+I approached this challenge by modeling each file upload as its own XState state machine, giving each upload a clear lifecycle (`getUploadUrl` → `uploadFile` → `notifyCompletion`) with explicit states for success, failure, and cancellation. This made retry logic and error handling straightforward, since each machine "remembers" where it failed and can retry that step or restart entirely.
+
+To coordinate multiple uploads, I used Jotai as a lightweight state layer to hold actor references, making it easy for the React UI to subscribe to and render progress across many concurrent uploads. The UI itself stays focused on rendering, while the logic lives inside the machines and hooks.
+
+### Trade-offs Made
+
+**Persistence**: I didn't fully implement persistence across refreshes, since File objects cannot be serialized. Instead, I scoped persistence to metadata only (possible future enhancement).
+
+**Queue Management**: I chose to allow all files to upload concurrently instead of enforcing a strict queue. This kept the implementation simpler and closer to real-world needs for uploading multiple photos.
+
+**Styling**: Kept UI styling minimal and semantic, prioritizing clarity and state feedback over design polish.
+
+## 🛠️ Development Notes
+
+### Tooling
+
+- **Editor/IDE**: Used Cursor for development
+- **LLMs/Codegen**: Leveraged Claude to help refine the challenge requirements and ChatGPT to cross-check reasoning and fill conceptual gaps. Cursor's inline assistance was also used to scaffold boilerplate and speed up iteration
+- **Testing/Verification**: Relied on console-driven debugging and XState's actor inspection to validate machine behavior
+
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
