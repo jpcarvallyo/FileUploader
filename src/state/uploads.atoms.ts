@@ -1,26 +1,5 @@
 import { atom } from "jotai";
-import { atomWithStorage } from "jotai/utils";
 import type { ActorRef } from "xstate";
-import { UploadState } from "../machines/uploadMachine";
-
-// Interface for stored upload data
-export interface StoredUpload {
-  id: string;
-  name: string;
-  size: number;
-  status: "pending" | "uploading" | "success" | "failure" | "cancelled";
-  progress?: number;
-  error?: string;
-  result?: unknown;
-  uploadUrl?: string;
-  createdAt: number;
-}
-
-// Store persisted upload data
-export const storedUploadsAtom = atomWithStorage<StoredUpload[]>(
-  "uploader-stored-uploads",
-  []
-);
 
 // Store actor references for each upload
 export const uploadActorsAtom = atom<Map<string, ActorRef<any, any>>>(
@@ -56,53 +35,6 @@ export const uploadSummaryAtom = atom((get) => {
   return get(uploadSummaryStateAtom);
 });
 
-// Create a reactive summary atom that subscribes to actor state changes
-export const reactiveUploadSummaryAtom = atom((get) => {
-  const actors = get(uploadActorsAtom);
-  if (!actors || typeof actors.keys !== "function") {
-    return {
-      total: 0,
-      uploading: 0,
-      success: 0,
-      failure: 0,
-      cancelled: 0,
-    };
-  }
-
-  let total = 0;
-  let uploading = 0;
-  let success = 0;
-  let failure = 0;
-  let cancelled = 0;
-
-  actors.forEach((actor) => {
-    const state = actor.getSnapshot();
-    total++;
-
-    if (
-      state.matches(UploadState.UPLOADING) ||
-      state.matches(UploadState.GETTING_URL) ||
-      state.matches(UploadState.NOTIFYING)
-    ) {
-      uploading++;
-    } else if (state.matches(UploadState.SUCCESS)) {
-      success++;
-    } else if (state.matches(UploadState.FAILURE)) {
-      failure++;
-    } else if (state.matches(UploadState.CANCELLED)) {
-      cancelled++;
-    }
-  });
-
-  return {
-    total,
-    uploading,
-    success,
-    failure,
-    cancelled,
-  };
-});
-
 // Actions
 export const addUploadActorAtom = atom(
   null,
@@ -124,68 +56,4 @@ export const removeUploadActorAtom = atom(null, (get, set, id: string) => {
 
 export const clearUploadActorsAtom = atom(null, (_get, set) => {
   set(uploadActorsAtom, new Map());
-});
-
-// Helper atoms for specific upload states
-export const uploadingCountAtom = atom((get) => {
-  const actors = get(uploadActorsAtom);
-  if (!actors || typeof actors.keys !== "function") {
-    return 0;
-  }
-
-  let count = 0;
-
-  actors.forEach((actor) => {
-    const state = actor.getSnapshot();
-    if (
-      state.matches(UploadState.UPLOADING) ||
-      state.matches(UploadState.GETTING_URL) ||
-      state.matches(UploadState.NOTIFYING)
-    ) {
-      count++;
-    }
-  });
-
-  return count;
-});
-
-export const hasActiveUploadsAtom = atom((get) => {
-  return get(uploadingCountAtom) > 0;
-});
-
-export const hasFailedUploadsAtom = atom((get) => {
-  const actors = get(uploadActorsAtom);
-  if (!actors || typeof actors.keys !== "function") {
-    return false;
-  }
-
-  let hasFailed = false;
-
-  actors.forEach((actor) => {
-    const state = actor.getSnapshot();
-    if (state.matches(UploadState.FAILURE)) {
-      hasFailed = true;
-    }
-  });
-  return hasFailed;
-});
-
-// Force reactivity by subscribing to actor state changes
-export const hasFailedUploadsReactiveAtom = atom((get) => {
-  const actors = get(uploadActorsAtom);
-  if (!actors || typeof actors.keys !== "function") {
-    return false;
-  }
-
-  let hasFailed = false;
-
-  actors.forEach((actor) => {
-    // Force subscription to actor state by accessing it
-    const state = actor.getSnapshot();
-    if (state.matches(UploadState.FAILURE)) {
-      hasFailed = true;
-    }
-  });
-
-  return hasFailed;
 });

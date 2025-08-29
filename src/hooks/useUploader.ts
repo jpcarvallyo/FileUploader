@@ -1,5 +1,5 @@
 import { useAtom, useSetAtom } from "jotai";
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useEffect } from "react";
 import { createActor } from "xstate";
 import {
   uploadMachine,
@@ -14,8 +14,6 @@ import {
   addUploadActorAtom,
   removeUploadActorAtom,
   clearUploadActorsAtom,
-  hasActiveUploadsAtom,
-  hasFailedUploadsAtom,
 } from "../state/uploads.atoms";
 
 export interface UploadSummary {
@@ -29,15 +27,13 @@ export interface UploadSummary {
 export const useUploader = () => {
   const [uploadActors] = useAtom(uploadActorsAtom);
   const [summary] = useAtom(uploadSummaryAtom);
-  const [hasActiveUploads] = useAtom(hasActiveUploadsAtom);
-  const [hasFailedUploads] = useAtom(hasFailedUploadsAtom);
   const addUploadActor = useSetAtom(addUploadActorAtom);
   const removeUploadActor = useSetAtom(removeUploadActorAtom);
   const clearUploadActors = useSetAtom(clearUploadActorsAtom);
   const setSummaryState = useSetAtom(uploadSummaryStateAtom);
 
   // Subscribe to actor state changes and update summary
-  React.useEffect(() => {
+  useEffect(() => {
     if (!uploadActors || typeof uploadActors.forEach !== "function") return;
 
     const updateSummary = () => {
@@ -232,17 +228,6 @@ export const useUploader = () => {
     [addUploadActor]
   );
 
-  // Start all idle uploads
-  const startAll = useCallback(() => {
-    if (!uploadActors || typeof uploadActors.forEach !== "function") return;
-    uploadActors.forEach((actor) => {
-      const state = actor.getSnapshot();
-      if (state.matches(UploadState.IDLE)) {
-        actor.send({ type: UploadEventType.START });
-      }
-    });
-  }, [uploadActors]);
-
   // Retry all failed uploads
   const retryAll = useCallback(() => {
     if (!uploadActors || typeof uploadActors.forEach !== "function") return;
@@ -289,27 +274,6 @@ export const useUploader = () => {
       }
     });
   }, [uploadActors]);
-
-  // Retry specific upload (retry all)
-  const retryUpload = useCallback(
-    (id: string) => {
-      const actor = uploadActors.get(id);
-      if (actor) {
-        const state = actor.getSnapshot();
-        if (state.matches(UploadState.FAILURE)) {
-          actor.send({ type: UploadEventType.RETRY_ALL });
-          // Restart the upload process
-          const restartFunction = cancellationFunctions.current.get(
-            `${id}_restart`
-          );
-          if (restartFunction && typeof restartFunction === "function") {
-            restartFunction();
-          }
-        }
-      }
-    },
-    [uploadActors]
-  );
 
   // Retry current step
   const retryStep = useCallback(
@@ -421,16 +385,12 @@ export const useUploader = () => {
     // State
     uploadActors,
     summary,
-    hasActiveUploads,
-    hasFailedUploads,
     fileInfoMap: fileInfoMap.current,
 
     // Actions
     addFiles,
-    startAll,
     retryAll,
     cancelAll,
-    retryUpload,
     retryStep,
     cancelUpload,
     removeUpload,
