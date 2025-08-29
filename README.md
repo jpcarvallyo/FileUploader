@@ -188,8 +188,6 @@ const {
   // State
   uploadActors,
   summary,
-  hasActiveUploads,
-  hasFailedUploads,
   fileInfoMap,
 
   // Actions
@@ -205,6 +203,8 @@ const {
   getUploadDetails,
   getAllUploadDetails,
 } = useUploader();
+```
+
 ```
 
 ### Upload States
@@ -259,3 +259,4 @@ To coordinate multiple uploads, I used Jotai as a lightweight state layer to hol
 ## 📄 License
 
 This project is licensed under the MIT License.
+```
