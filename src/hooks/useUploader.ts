@@ -1,5 +1,5 @@
 import { useAtom, useSetAtom } from "jotai";
-import React, { useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import { createActor } from "xstate";
 import {
   uploadMachine,
