@@ -265,7 +265,7 @@ const Uploader: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Second Row: Size, State, Progress, and Actions */}
+                  {/* Second Row: State, Progress, and Actions */}
                   <div
                     style={{
                       display: "flex",
@@ -296,8 +296,9 @@ const Uploader: React.FC = () => {
                             : actorState.value === "cancelled"
                             ? "#721c24"
                             : "#856404",
-                        minWidth: "80px",
+                        width: "80px",
                         textAlign: "center",
+                        flexShrink: 0,
                       }}
                     >
                       {actorState.value === "success"
@@ -363,7 +364,14 @@ const Uploader: React.FC = () => {
                     </div>
 
                     {/* Action Buttons */}
-                    <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "6px",
+                        flexShrink: 0,
+                        width: "70px",
+                      }}
+                    >
                       {actorState.value === "failure" && (
                         <button
                           onClick={() => retryStep(id)}
