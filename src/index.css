@@ -31,12 +31,6 @@ body {
 }
 
 /* Upload list styles */
-.upload-list {
-  margin-top: 20px;
-  border: 2px solid blue;
-  padding: 10px;
-  background: rgba(0, 0, 255, 0.1);
-}
 
 .upload-item {
   border: 2px solid green;

@@ -181,14 +181,6 @@ const Uploader: React.FC = () => {
       {/* Upload List */}
       {uploadActors && uploadActors.size > 0 && (
         <div className="upload-list">
-          {(() => {
-            console.log("UPLOAD ACTORS SIZE:", uploadActors.size);
-            console.log(
-              "UPLOAD ACTORS ENTRIES:",
-              Array.from(uploadActors.entries())
-            );
-            return null;
-          })()}
           {Array.from(uploadActors.entries()).map(([id, actor]) => {
             console.log("RENDER ROW", id, actor.getSnapshot?.()?.value);
 
@@ -202,6 +194,19 @@ const Uploader: React.FC = () => {
               const fileInfo = fileInfoMap.get(id);
               const fileName = fileInfo?.name || file?.name || "Unknown file";
               const fileSize = fileInfo?.size || file?.size || 0;
+
+              // Helper function to format bytes to human readable format
+              const formatBytes = (bytes: number) => {
+                if (bytes === 0) return "0 B";
+                const k = 1024;
+                const sizes = ["B", "KB", "MB", "GB"];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return (
+                  parseFloat((bytes / Math.pow(k, i)).toFixed(1)) +
+                  " " +
+                  sizes[i]
+                );
+              };
 
               console.log("ProgressUploadItem render:", {
                 id,
@@ -226,24 +231,50 @@ const Uploader: React.FC = () => {
                     background: "white",
                   }}
                 >
+                  {/* First Row: File Name */}
+                  <div
+                    style={{
+                      marginBottom: "12px",
+                      display: "flex",
+                      flexDirection: "column",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: "bold",
+                        fontSize: "14px",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={fileName}
+                    >
+                      {fileName.length > 25
+                        ? `${fileName.substring(0, 25)}...`
+                        : fileName}
+                    </div>
+                    {/* Size */}
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        color: "#666",
+                        minWidth: "60px",
+                      }}
+                    >
+                      {fileSize > 0 ? formatBytes(fileSize) : ""}
+                    </div>
+                  </div>
+
+                  {/* Second Row: Size, State, Progress, and Actions */}
                   <div
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      marginBottom: "12px",
+                      gap: "40px",
                     }}
                   >
-                    <div>
-                      <div style={{ fontWeight: "bold", fontSize: "14px" }}>
-                        {fileName}
-                      </div>
-                      <div style={{ fontSize: "12px", color: "#666" }}>
-                        {fileSize > 0
-                          ? `${(fileSize / 1024).toFixed(1)} KB`
-                          : ""}
-                      </div>
-                    </div>
+                    {/* State Badge */}
                     <div
                       style={{
                         padding: "4px 8px",
@@ -265,6 +296,8 @@ const Uploader: React.FC = () => {
                             : actorState.value === "cancelled"
                             ? "#721c24"
                             : "#856404",
+                        minWidth: "80px",
+                        textAlign: "center",
                       }}
                     >
                       {actorState.value === "success"
@@ -279,113 +312,128 @@ const Uploader: React.FC = () => {
                         ? "Preparing"
                         : "Ready"}
                     </div>
-                  </div>
 
-                  {/* Progress Bar */}
-                  <div style={{ marginBottom: "12px" }}>
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "8px",
-                        background: "#e9ecef",
-                        borderRadius: "4px",
-                        overflow: "hidden",
-                        marginBottom: "4px",
-                        position: "relative",
-                      }}
-                    >
+                    {/* Progress */}
+                    <div style={{ width: "200px", flexShrink: 0 }}>
                       <div
                         style={{
-                          position: "absolute",
-                          left: 0,
-                          top: 0,
-                          width: `${progress}%`,
-                          height: "100%",
-                          background: "#007bff",
-                          transition: "width 0.3s ease",
+                          width: "100%",
+                          height: "8px",
+                          background: "#e9ecef",
                           borderRadius: "4px",
-                          minWidth: "0%",
-                          maxWidth: "100%",
+                          overflow: "hidden",
+                          marginBottom: "4px",
+                          position: "relative",
                         }}
-                      />
+                      >
+                        <div
+                          style={{
+                            position: "absolute",
+                            left: 0,
+                            top: 0,
+                            width: `${progress}%`,
+                            height: "100%",
+                            background: "#007bff",
+                            transition: "width 0.3s ease",
+                            borderRadius: "4px",
+                            minWidth: "0%",
+                            maxWidth: "100%",
+                          }}
+                        />
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          color: "#666",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          width: "100%",
+                        }}
+                      >
+                        <span style={{ minWidth: "40px" }}>{progress}%</span>
+                        <span style={{ minWidth: "120px", textAlign: "right" }}>
+                          {formatBytes(
+                            actorState.context.progress?.loaded || 0
+                          )}{" "}
+                          /{" "}
+                          {formatBytes(actorState.context.progress?.total || 0)}
+                        </span>
+                      </div>
                     </div>
-                    <div
-                      style={{
-                        fontSize: "12px",
-                        color: "#666",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        width: "100%",
-                      }}
-                    >
-                      <span style={{ minWidth: "40px" }}>{progress}%</span>
-                      <span style={{ minWidth: "120px", textAlign: "right" }}>
-                        {actorState.context.progress?.loaded || 0} /{" "}
-                        {actorState.context.progress?.total || 0} bytes
-                      </span>
+
+                    {/* Action Buttons */}
+                    <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                      {actorState.value === "failure" && (
+                        <button
+                          onClick={() => retryStep(id)}
+                          style={{
+                            padding: "6px",
+                            fontSize: "14px",
+                            background: "#6c757d",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "3px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "28px",
+                            height: "28px",
+                          }}
+                          title="Retry"
+                        >
+                          <i className="fas fa-redo"></i>
+                        </button>
+                      )}
+
+                      {(actorState.value === "uploading" ||
+                        actorState.value === "gettingUrl") && (
+                        <button
+                          onClick={() => {
+                            cancelUpload(id);
+                            // Remove the upload after a short delay to allow cancellation to complete
+                            setTimeout(() => removeUpload(id), 100);
+                          }}
+                          style={{
+                            padding: "4px 8px",
+                            fontSize: "11px",
+                            background: "#dc3545",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "3px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      )}
+
+                      {(actorState.value === "success" ||
+                        actorState.value === "failure" ||
+                        actorState.value === "cancelled") && (
+                        <button
+                          onClick={() => removeUpload(id)}
+                          style={{
+                            padding: "6px",
+                            fontSize: "14px",
+                            background: "#6c757d",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "3px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "28px",
+                            height: "28px",
+                          }}
+                          title="Remove"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      )}
                     </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    {actorState.value === "failure" && (
-                      <button
-                        onClick={() => retryStep(id)}
-                        style={{
-                          padding: "6px 12px",
-                          fontSize: "12px",
-                          background: "#6c757d",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Retry Step
-                      </button>
-                    )}
-
-                    {(actorState.value === "uploading" ||
-                      actorState.value === "gettingUrl") && (
-                      <button
-                        onClick={() => {
-                          cancelUpload(id);
-                          // Remove the upload after a short delay to allow cancellation to complete
-                          setTimeout(() => removeUpload(id), 100);
-                        }}
-                        style={{
-                          padding: "6px 12px",
-                          fontSize: "12px",
-                          background: "#dc3545",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    )}
-
-                    {(actorState.value === "success" ||
-                      actorState.value === "failure" ||
-                      actorState.value === "cancelled") && (
-                      <button
-                        onClick={() => removeUpload(id)}
-                        style={{
-                          padding: "6px 12px",
-                          fontSize: "12px",
-                          background: "#6c757d",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Remove
-                      </button>
-                    )}
                   </div>
                 </div>
               );
