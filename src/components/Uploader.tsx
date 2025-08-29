@@ -61,9 +61,9 @@ const Uploader: React.FC = () => {
 
     // Cleanup subscriptions
     return () => {
-      subscriptions.forEach((unsubscribe) => {
-        if (unsubscribe && typeof unsubscribe === "function") {
-          unsubscribe();
+      subscriptions.forEach((subscription) => {
+        if (subscription && typeof subscription.unsubscribe === "function") {
+          subscription.unsubscribe();
         }
       });
     };

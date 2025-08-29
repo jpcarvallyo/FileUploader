@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 
 // Mock upload states
 type UploadState = "idle" | "uploading" | "success" | "failure" | "cancelled";
@@ -97,7 +97,7 @@ class MockUploadManager {
 describe("Upload Scenarios", () => {
   let uploadManager: MockUploadManager;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     uploadManager = new MockUploadManager();
   });
 

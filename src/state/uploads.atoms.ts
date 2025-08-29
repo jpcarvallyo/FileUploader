@@ -1,7 +1,6 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import type { ActorRef } from "xstate";
-import type { uploadMachine } from "../machines/uploadMachine";
 
 // Interface for stored upload data
 export interface StoredUpload {
@@ -23,9 +22,9 @@ export const storedUploadsAtom = atomWithStorage<StoredUpload[]>(
 );
 
 // Store actor references for each upload
-export const uploadActorsAtom = atom<
-  Map<string, ActorRef<typeof uploadMachine>>
->(new Map());
+export const uploadActorsAtom = atom<Map<string, ActorRef<any, any>>>(
+  new Map()
+);
 
 // Derived atoms for upload IDs
 export const uploadIdsAtom = atom((get) => {
@@ -106,7 +105,7 @@ export const reactiveUploadSummaryAtom = atom((get) => {
 // Actions
 export const addUploadActorAtom = atom(
   null,
-  (get, set, id: string, actor: ActorRef<typeof uploadMachine>) => {
+  (get, set, id: string, actor: ActorRef<any, any>) => {
     const actors = get(uploadActorsAtom);
     const newActors = actors ? new Map(actors) : new Map();
     newActors.set(id, actor);
@@ -122,7 +121,7 @@ export const removeUploadActorAtom = atom(null, (get, set, id: string) => {
   set(uploadActorsAtom, newActors);
 });
 
-export const clearUploadActorsAtom = atom(null, (get, set) => {
+export const clearUploadActorsAtom = atom(null, (_get, set) => {
   set(uploadActorsAtom, new Map());
 });
 

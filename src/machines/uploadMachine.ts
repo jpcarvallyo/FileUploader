@@ -149,11 +149,6 @@ export const uploadMachine = createMachine({
             error: null,
             progress: null,
             result: null,
-            // Preserve other context properties
-            uploadId: (context) => context.uploadId,
-            uploadUrl: (context) => context.uploadUrl,
-            file: (context) => context.file,
-            cancelFunction: (context) => context.cancelFunction,
           }),
         },
         RETRY_STEP: {

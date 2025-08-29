@@ -125,7 +125,7 @@ export const uploadFile = async (
 
 // Notify completion
 export const notifyCompletion = async (
-  uploadId: string,
+  _uploadId: string,
   filename: string
 ): Promise<NotificationResult> => {
   // Simulate network delay
